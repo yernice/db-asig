@@ -70,6 +70,137 @@ def show_query(connection, task, sql, parameters):
     return rows
 
 
+def update_phone(connection):
+    parameters = {"email": "arman.armanov@example.com"}
+    snapshot_sql = """
+        SELECT user_id, given_name, surname, email, phone_number
+        FROM app_user WHERE email = :email
+    """
+    show_query(connection, "3.1 - Before phone update", snapshot_sql, parameters)
+    changed = show_query(connection, "3.1 - Update phone", """
+        UPDATE app_user SET phone_number = :phone WHERE email = :email
+        RETURNING user_id, email, phone_number
+    """, {**parameters, "phone": "+77773414141"})
+    show_query(connection, "3.1 - After phone update", snapshot_sql, parameters)
+    return changed
+
+
+def update_review_deadlines(connection):
+    snapshot_sql = """
+        SELECT conference_id, acronym, city, review_deadline
+        FROM conference ORDER BY conference_id
+    """
+    show_query(connection, "3.2 - Before deadline update", snapshot_sql, {})
+    changed = show_query(connection, "3.2 - Conditional deadline update", """
+        UPDATE conference
+        SET review_deadline = review_deadline +
+            CASE WHEN city = :city THEN :astana_days ELSE :other_days END
+        RETURNING conference_id, acronym, city, review_deadline
+    """, {"city": "Astana", "astana_days": 7, "other_days": 3})
+    show_query(connection, "3.2 - After deadline update", snapshot_sql, {})
+    return changed
+
+
+def paper_deletion_counts(connection, phase, paper_ids):
+    # Count children using the original IDs even after their parents disappear.
+    return show_query(connection, f"4.1 - {phase}: targeted rows and dependents", """
+        SELECT 'paper' AS table_name, COUNT(*) AS row_count
+        FROM paper WHERE paper_id = ANY(:paper_ids)
+        UNION ALL
+        SELECT 'paper_author', COUNT(*) FROM paper_author WHERE paper_id = ANY(:paper_ids)
+        UNION ALL
+        SELECT 'paper_keyword', COUNT(*) FROM paper_keyword WHERE paper_id = ANY(:paper_ids)
+        UNION ALL
+        SELECT 'paper_version', COUNT(*) FROM paper_version WHERE paper_id = ANY(:paper_ids)
+        UNION ALL
+        SELECT 'review', COUNT(*) FROM review WHERE paper_id = ANY(:paper_ids)
+    """, {"paper_ids": paper_ids})
+
+
+def paper_deletion_survivors(connection, phase):
+    show_query(connection, f"4.1 - {phase}: papers", """
+        SELECT paper_id, title, status FROM paper ORDER BY paper_id
+    """, {})
+    show_query(connection, f"4.1 - {phase}: protected records", """
+        SELECT (SELECT COUNT(*) FROM app_user) AS user_count,
+               (SELECT COUNT(*) FROM track) AS track_count,
+               (SELECT COUNT(*) FROM conference) AS conference_count
+    """, {})
+
+
+def delete_withdrawn_papers(connection):
+    parameters = {"email": "amina.aminova@example.com", "status": "withdrawn"}
+    # Matching is by email and corresponding authorship, not name or coauthorship.
+    target_condition = """
+        p.status = :status AND EXISTS (
+            SELECT 1 FROM paper_author AS pa
+            JOIN app_user AS u ON u.user_id = pa.author_id
+            WHERE pa.paper_id = p.paper_id AND pa.is_corresponding AND u.email = :email
+        )
+    """
+    targets = show_query(connection, "4.1 - Before: matching withdrawn papers",
+                         f"SELECT p.paper_id, p.title FROM paper AS p WHERE {target_condition} ORDER BY p.paper_id",
+                         parameters)
+    paper_ids = [row["paper_id"] for row in targets]
+    paper_deletion_counts(connection, "Before", paper_ids)
+    paper_deletion_survivors(connection, "Before")
+    # All four dependent foreign keys use ON DELETE CASCADE in schema.sql.
+    deleted = show_query(connection, "4.1 - Delete withdrawn papers",
+                         f"DELETE FROM paper AS p WHERE {target_condition} RETURNING p.paper_id, p.title",
+                         parameters)
+    paper_deletion_counts(connection, "After", paper_ids)
+    paper_deletion_survivors(connection, "After")
+    return deleted
+
+
+def delete_empty_sessions(connection):
+    snapshot_sql = """
+        SELECT s.session_id, s.title, c.conference_id, c.city,
+               COUNT(p.paper_id) AS assigned_paper_count
+        FROM conference_session AS s
+        JOIN conference AS c ON c.conference_id = s.conference_id
+        LEFT JOIN paper AS p ON p.session_id = s.session_id
+        GROUP BY s.session_id, s.title, c.conference_id, c.city
+        ORDER BY s.session_id
+    """
+    conferences_sql = "SELECT conference_id, acronym FROM conference ORDER BY conference_id"
+    show_query(connection, "4.2 - Before: sessions", snapshot_sql, {})
+    show_query(connection, "4.2 - Before: conferences", conferences_sql, {})
+    deleted = show_query(connection, "4.2 - Delete empty Astana sessions", """
+        DELETE FROM conference_session AS s
+        USING conference AS c
+        WHERE c.conference_id = s.conference_id AND c.city = :city
+          AND NOT EXISTS (SELECT 1 FROM paper AS p WHERE p.session_id = s.session_id)
+        RETURNING s.session_id, s.title, s.conference_id
+    """, {"city": "Astana"})
+    show_query(connection, "4.2 - After: sessions", snapshot_sql, {})
+    show_query(connection, "4.2 - After: conferences", conferences_sql, {})
+    return deleted
+
+
+def run_mutation_demo(task, operation):
+    """Always roll back each independent demonstration, including on failure."""
+    from database import engine
+
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            return operation(connection)
+        finally:
+            transaction.rollback()
+            print(f"Task {task}: ROLLBACK complete; demonstration changes were not saved.")
+
+
+def run_updates():
+    run_mutation_demo("3.1", update_phone)
+    run_mutation_demo("3.2", update_review_deadlines)
+
+
+def run_deletions():
+    run_mutation_demo("4.1", delete_withdrawn_papers)
+    run_mutation_demo("4.2", delete_empty_sessions)
+
+
 def accepted_papers(connection):
     # Task 5.1: join only the corresponding author to keep one row per paper.
     return show_query(connection, "5.1 - Accepted papers", """
@@ -304,6 +435,8 @@ def main():
     commands.add_parser("complex-queries", help="Run aggregate tasks 6.1-6.4.")
     commands.add_parser("acceptance-rates", help="Run task 7: conference acceptance rates.")
     commands.add_parser("schedule-view", help="Run task 8: create and query the schedule view.")
+    commands.add_parser("updates", help="Demonstrate tasks 3.1-3.2, rolling back each update.")
+    commands.add_parser("deletions", help="Demonstrate tasks 4.1-4.2, rolling back each deletion.")
     args = parser.parse_args()
 
     try:
@@ -319,6 +452,10 @@ def main():
             run_acceptance_rates()
         elif args.command == "schedule-view":
             run_schedule_view()
+        elif args.command == "updates":
+            run_updates()
+        elif args.command == "deletions":
+            run_deletions()
     except SQLAlchemyError as exc:
         detail = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
         parser.exit(1, f"Database operation failed: {detail}\n")

@@ -84,6 +84,37 @@ Restoring deletes existing assignment data. These commands use the database in
 `DATABASE_URL` and do not create a PostgreSQL database. Use the root `seed.sql`
 for the final assignment dataset; `web/db/sample_seed.sql` is a separate sample.
 
+## Tasks 3 and 4: Update and delete demonstrations
+
+Run these against the original root seed dataset. If records have changed, restore
+the seed using Task 2's instructions first. These commands do not reset the database.
+
+```bash
+./.venv/Scripts/python.exe scripts.py updates
+./.venv/Scripts/python.exe scripts.py deletions
+```
+
+Each operation prints its task number, SQL, bound inputs, before/after results,
+and the affected rows using PostgreSQL `RETURNING`. Each runs in a separate
+transaction that always rolls back, including if an operation fails. The displayed
+after-state is temporary; the next task and later queries see the original data.
+There is no commit option for these demonstration commands.
+
+Expected checks using the root seed:
+
+| Task | Before | Temporary after-state |
+| --- | --- | --- |
+| 3.1 | Arman, identified by `arman.armanov@example.com`, has phone `+77010000001`. | Phone becomes `+77773414141`; one user is affected. |
+| 3.2 | Conference IDs 1, 2, 3 have review deadlines `2026-11-15`, `2026-12-01`, `2027-05-15`. | One conditional UPDATE changes them to `2026-11-22` (Astana, +7 days), `2026-12-04`, `2027-05-18` (elsewhere, +3 days). |
+| 4.1 | Amina (`amina.aminova@example.com`) is corresponding author of withdrawn papers 7 and 8. Their dependent counts are 4 authorship rows, 3 keywords, 2 versions, and 1 review. | Both papers and all those dependent rows disappear through foreign-key cascades. Papers 1-6, 9, 10 remain, along with all 10 users, 5 tracks, and 3 conferences. |
+| 4.2 | Session 2 is empty and in Astana. Sessions 1 and 3 have papers; session 4 is empty but outside Astana. | Only session 2 disappears. Sessions 1, 3, 4 and all conferences remain. |
+
+After each operation, look for `ROLLBACK complete`. Running the same commands again
+should show the same before-state and affected rows. Task 4.1 prints dependent-row
+counts using the original target paper IDs, so the after-counts must all be zero.
+An empty match prints zero affected rows; use the original seed for grading so
+each required operation affects the intended records.
+
 ## Tasks 5.1-5.4: Simple retrieval queries
 
 After loading the original seed, run in Git Bash:
