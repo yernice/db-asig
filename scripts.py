@@ -137,6 +137,138 @@ def run_simple_queries(paper_id, conference_id):
         conference_reviewers(connection, conference_id)
 
 
+def track_statistics(connection):
+    # Task 6.1: authorship joins multiply papers, so count distinct IDs.
+    return show_query(connection, "6.1 - Track statistics", """
+        SELECT t.track_id, t.name AS track_name, t.conference_id,
+               COUNT(DISTINCT p.paper_id) AS paper_count,
+               COUNT(DISTINCT pa.author_id) AS author_count
+        FROM track AS t
+        LEFT JOIN paper AS p ON p.track_id = t.track_id
+        LEFT JOIN paper_author AS pa ON pa.paper_id = p.paper_id
+        GROUP BY t.track_id, t.name, t.conference_id
+        ORDER BY t.track_id
+    """, {})
+
+
+def reviewer_statistics(connection):
+    # Task 6.2: count review IDs rather than the outer join's empty row.
+    return show_query(connection, "6.2 - Reviewer statistics", """
+        SELECT r.reviewer_id, u.given_name || ' ' || u.surname AS full_name,
+               COUNT(rv.review_id) AS review_count,
+               AVG(rv.overall_score) AS average_overall_score
+        FROM reviewer AS r
+        JOIN app_user AS u ON u.user_id = r.reviewer_id
+        LEFT JOIN review AS rv ON rv.reviewer_id = r.reviewer_id
+        GROUP BY r.reviewer_id, u.given_name, u.surname
+        ORDER BY r.reviewer_id
+    """, {})
+
+
+def conference_statistics(connection):
+    # Task 6.3: count papers once while allowing every review into the average.
+    return show_query(connection, "6.3 - Conference statistics", """
+        SELECT c.conference_id, c.acronym,
+               COUNT(DISTINCT p.paper_id) AS paper_count,
+               COUNT(DISTINCT CASE WHEN p.status = :accepted THEN p.paper_id END)
+                   AS accepted_count,
+               AVG(rv.overall_score) AS average_overall_score
+        FROM conference AS c
+        LEFT JOIN track AS t ON t.conference_id = c.conference_id
+        LEFT JOIN paper AS p ON p.track_id = t.track_id
+        LEFT JOIN review AS rv ON rv.paper_id = p.paper_id
+        GROUP BY c.conference_id, c.acronym
+        ORDER BY c.conference_id
+    """, {"accepted": "accepted"})
+
+
+def above_average_reviewers(connection):
+    # Task 6.4: build counts for ALL reviewers, including zero-review users.
+    return show_query(connection, "6.4 - Above-average reviewers", """
+        WITH review_counts AS (
+            SELECT r.reviewer_id, COUNT(rv.review_id) AS review_count
+            FROM reviewer AS r
+            LEFT JOIN review AS rv ON rv.reviewer_id = r.reviewer_id
+            GROUP BY r.reviewer_id
+        ), overall AS (
+            SELECT AVG(review_count) AS average_review_count FROM review_counts
+        )
+        SELECT rc.reviewer_id, u.given_name || ' ' || u.surname AS full_name,
+               rc.review_count, o.average_review_count
+        FROM review_counts AS rc
+        JOIN app_user AS u ON u.user_id = rc.reviewer_id
+        CROSS JOIN overall AS o
+        WHERE rc.review_count > o.average_review_count
+        ORDER BY rc.reviewer_id
+    """, {})
+
+
+def run_complex_queries():
+    from database import engine
+
+    with engine.connect() as connection:
+        track_statistics(connection)
+        reviewer_statistics(connection)
+        conference_statistics(connection)
+        above_average_reviewers(connection)
+
+
+def acceptance_rates(connection):
+    # Task 7: only decisions enter the denominator; zero decisions yield NULL.
+    return show_query(connection, "7 - Conference acceptance rates", """
+        WITH decisions AS (
+            SELECT c.conference_id, c.acronym,
+                   COUNT(CASE WHEN p.status = :accepted THEN 1 END) AS accepted_count,
+                   COUNT(CASE WHEN p.status = :rejected THEN 1 END) AS rejected_count
+            FROM conference AS c
+            LEFT JOIN track AS t ON t.conference_id = c.conference_id
+            LEFT JOIN paper AS p ON p.track_id = t.track_id
+            GROUP BY c.conference_id, c.acronym
+        )
+        SELECT conference_id, acronym, accepted_count, rejected_count,
+               ROUND(100.0 * accepted_count /
+                     NULLIF(accepted_count + rejected_count, 0), 2) AS acceptance_rate
+        FROM decisions
+        ORDER BY conference_id
+    """, {"accepted": "accepted", "rejected": "rejected"})
+
+
+def run_acceptance_rates():
+    from database import engine
+
+    with engine.connect() as connection:
+        acceptance_rates(connection)
+
+
+def scheduled_papers(connection):
+    return show_query(connection, "8 - Query accepted_paper_schedule", """
+        SELECT paper_id, paper_title, conference_id, acronym, track_name,
+               session_id, session_title, session_date, start_time, end_time,
+               room_label, chair_name, corresponding_author_name,
+               corresponding_author_email
+        FROM accepted_paper_schedule
+        ORDER BY conference_id, session_date, start_time, session_id, paper_id
+    """, {})
+
+
+def run_schedule_view():
+    from database import engine
+
+    # Reuse the view definition in schema.sql; unlike its functions, this SELECT
+    # definition has no internal semicolons. Do not run the schema's DROP commands.
+    schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
+    start = schema_sql.index("CREATE VIEW accepted_paper_schedule AS")
+    end = schema_sql.index(";", start) + 1
+    view_sql = schema_sql[start:end].replace("CREATE VIEW", "CREATE OR REPLACE VIEW", 1)
+    print("Task 8 - Create accepted_paper_schedule view")
+    print(f"SQL:\n{view_sql}")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(view_sql)
+        print("Result: view created or replaced.")
+        scheduled_papers(connection)
+    print("Task 8 complete. View committed; paper data unchanged.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -169,6 +301,9 @@ def main():
         "--conference-id", type=int, default=1,
         help="Conference pool for task 5.4 (default: 1).",
     )
+    commands.add_parser("complex-queries", help="Run aggregate tasks 6.1-6.4.")
+    commands.add_parser("acceptance-rates", help="Run task 7: conference acceptance rates.")
+    commands.add_parser("schedule-view", help="Run task 8: create and query the schedule view.")
     args = parser.parse_args()
 
     try:
@@ -178,6 +313,12 @@ def main():
             populate_database()
         elif args.command == "simple-queries":
             run_simple_queries(args.paper_id, args.conference_id)
+        elif args.command == "complex-queries":
+            run_complex_queries()
+        elif args.command == "acceptance-rates":
+            run_acceptance_rates()
+        elif args.command == "schedule-view":
+            run_schedule_view()
     except SQLAlchemyError as exc:
         detail = str(exc.orig) if getattr(exc, "orig", None) else str(exc)
         parser.exit(1, f"Database operation failed: {detail}\n")

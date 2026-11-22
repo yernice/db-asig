@@ -115,3 +115,58 @@ Choose different paper/conference IDs with arguments:
 For those IDs, task 5.3 returns version 1 of paper 2, and task 5.4 returns reviewer 4.
 Tasks 5.1 and 5.2 keep their assignment-defined filters. A selection with no matches
 prints the column names and a zero row count.
+
+## Tasks 6, 7, and 8: Aggregates, acceptance rates, and schedule view
+
+Use the original root seed dataset for these checks. If you have edited records,
+restore it using Task 2's instructions first (restoration deletes existing data).
+Each command prints its numbered SQL, bound parameters, columns, and results.
+
+### Task 6: Aggregate queries
+
+```bash
+./.venv/Scripts/python.exe scripts.py complex-queries
+```
+
+Check each numbered section:
+
+| Task | Expected result |
+| --- | --- |
+| 6.1 | Track IDs 1-5 have `(paper_count, author_count)` of `(5, 5)`, `(3, 4)`, `(0, 0)`, `(2, 4)`, `(0, 0)`. Authors appearing on multiple papers in a track count once. |
+| 6.2 | Reviewer IDs `1, 4, 5, 6, 7, 8, 10` have review counts `1, 3, 1, 3, 0, 1, 1`; their average scores are `3`, approximately `4.6667`, `2`, `3`, `NULL`, `4`, `5`. |
+| 6.3 | Conference 1: 8 papers, 3 accepted, mean score `26/7` (approximately `3.7143`). Conference 2: 2 papers, 1 accepted, mean score `11/3` (approximately `3.6667`). Conference 3: 0 papers, 0 accepted, `NULL` mean. |
+| 6.4 | Only reviewers 4 and 6, each with 3 reviews. The overall mean count is `10/7` (approximately `1.4286`), including zero-review reviewer 7. |
+
+Tasks 6.2-6.4 print PostgreSQL's numeric averages without rounding them.
+
+### Task 7: Derived acceptance rate
+
+```bash
+./.venv/Scripts/python.exe scripts.py acceptance-rates
+```
+
+| Conference ID | Acronym | Accepted | Rejected | Acceptance rate (%) |
+| --- | --- | --- | --- | --- |
+| 1 | SRCML | 3 | 1 | 75.00 |
+| 2 | SVR | 1 | 1 | 50.00 |
+| 3 | TWDMC | 0 | 0 | NULL |
+
+The denominator includes only accepted and rejected papers. These commands read
+existing data and do not seed, reset, or update it.
+
+### Task 8: Create and query the view
+
+```bash
+./.venv/Scripts/python.exe scripts.py schedule-view
+```
+
+This creates or replaces the real database view `accepted_paper_schedule`, using
+its definition from `schema.sql`, and queries it. It does not run the rest of the
+schema file or change paper data. It can recreate the view if it is missing.
+
+Expect paper IDs `1, 2, 9`, in that order, assigned to session IDs `1, 1, 3`.
+Accepted paper 3 must be absent because it has no session. Each row includes the
+paper and conference details, track, session title/date/times/room, chair name,
+and corresponding author's name/email. Ordering is by conference ID, session
+date, start time, session ID, then paper ID. In pgAdmin, refresh
+**Schemas > public > Views** to see the view; no schedule result table is created.
