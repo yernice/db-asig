@@ -28,9 +28,7 @@ def initialize_schema():
 def populate_database():
     """Run task 2, loading the shared seed and reporting every table's count."""
     from database import engine
-
-    # The SQL file also works standalone. Let SQLAlchemy own its transaction here
-    # so the inserts and row-count checks commit together.
+    
     seed_lines = SEED_PATH.read_text(encoding="utf-8").strip().splitlines()
     if (
         not seed_lines
