@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Conference Management{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header><nav>
+  <a class="brand" href="{{ url_for('index') }}">Conference Review System</a>
+  <a href="{{ url_for('users_list') }}">Users</a>
+  <a href="{{ url_for('papers_list') }}">Papers</a>
+  <a href="{{ url_for('reviews_list') }}">Reviews</a>
+  <a href="{{ url_for('sessions_list') }}">Sessions</a>
+  <a href="{{ url_for('conferences') }}">Conferences</a>
+  <a href="{{ url_for('schedule') }}">Schedule (view)</a>
+</nav></header>
+<main>
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

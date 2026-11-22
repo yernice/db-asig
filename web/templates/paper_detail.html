@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Paper {{ paper.paper_id }}{% endblock %}
+{% block content %}
+<h1>{{ paper.title }} <span class="hint">paper {{ paper.paper_id }}</span></h1>
+<div class="card">
+  <b>Status:</b> <span class="status {{ paper.status|replace(' ', '-') }}">{{ paper.status }}</span> &nbsp;
+  <b>Conference / track:</b> {{ paper.acronym }} / {{ paper.track }} &nbsp;
+  <b>Submitted:</b> {{ paper.submission_date }}<br>
+  <b>Session:</b> {% if paper.session_id %}<a href="{{ url_for('session_detail', session_id=paper.session_id) }}">{{ paper.session_title }}</a>
+    ({{ paper.session_date }} {{ paper.start_time.strftime('%H:%M') }}){% else %}not scheduled{% endif %}<br>
+  <b>Keywords:</b> {% for k in keywords %}<span class="tag">{{ k.keyword }}</span>{% else %}—{% endfor %}
+  <p>{{ paper.abstract }}</p>
+</div>
+
+<h2>Authors</h2>
+<table><tr><th>Position</th><th>Author</th><th>Email</th><th>Corresponding</th></tr>
+{% for a in authors %}<tr><td>{{ a.author_position }}</td>
+<td><a href="{{ url_for('user_detail', user_id=a.author_id) }}">{{ a.name }}</a></td><td>{{ a.email }}</td>
+<td>{{ 'yes' if a.is_corresponding else '' }}</td></tr>{% endfor %}
+</table>
+
+<h2>Versions <span class="hint">(highest number = current version)</span></h2>
+<table><tr><th>Version</th><th>File location</th><th>Uploaded</th><th>Change note</th><th></th></tr>
+{% for v in versions %}<tr><td>v{{ v.version_no }}{% if loop.first %} <span class="tag">current</span>{% endif %}</td>
+<td>{{ v.file_location }}</td><td>{{ v.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ v.change_note or '' }}</td>
+<td><form class="inline" method="post" action="{{ url_for('version_delete', paper_id=paper.paper_id, version_no=v.version_no) }}"
+  onsubmit="return confirm('Delete version {{ v.version_no }}?');"><button class="danger" type="submit">Delete</button></form></td></tr>{% endfor %}
+</table>
+<form class="card" method="post" action="{{ url_for('version_add', paper_id=paper.paper_id) }}">
+  <b>Upload a new version</b> <span class="hint">(the next number is assigned automatically; store the file location only)</span>
+  <div class="grid">
+    <div><label>File location</label><input type="text" name="file_location" placeholder="papers/{{ paper.paper_id }}/v-next.pdf" required></div>
+    <div><label>Uploaded at</label><input type="datetime-local" name="uploaded_at" value="{{ now }}"></div>
+    <div><label>Change note <span class="hint">(optional)</span></label><input type="text" name="change_note"></div>
+  </div>
+  <div class="actions"><button type="submit">Add version</button></div>
+</form>
+
+<h2>Reviews</h2>
+<table><tr><th>ID</th><th>Reviewer</th><th>Score</th><th>Recommendation</th><th>Date</th></tr>
+{% for r in reviews %}<tr><td>{{ r.review_id }}</td><td>{{ r.reviewer }}</td><td>{{ r.overall_score }}</td>
+<td>{{ r.recommendation }}</td><td>{{ r.review_submission_date }}</td></tr>
+{% else %}<tr><td colspan="5">No reviews yet.</td></tr>{% endfor %}
+</table>
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('paper_edit', paper_id=paper.paper_id) }}">Edit paper</a>
+  <a class="btn light" href="{{ url_for('review_new', paper_id=paper.paper_id) }}">+ Add review</a>
+  <form class="inline" method="post" action="{{ url_for('paper_delete', paper_id=paper.paper_id) }}"
+        onsubmit="return confirm('Delete this paper with its versions, authorship, keywords and reviews?');">
+    <button class="danger" type="submit">Delete paper</button></form>
+  <a class="btn light" href="{{ url_for('papers_list') }}">Back to papers</a>
+</div>
+{% endblock %}

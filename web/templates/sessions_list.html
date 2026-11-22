@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+{% block content %}
+<h1>Conference sessions</h1>
+<div class="actions"><a class="btn" href="{{ url_for('session_new') }}">+ New session</a></div>
+<div class="wrap"><table>
+  <tr><th>ID</th><th>Conference</th><th>Title</th><th>Date</th><th>Time</th><th>Room</th><th>Chair</th><th>Papers</th><th></th></tr>
+  {% for s in sessions %}
+  <tr>
+    <td>{{ s.session_id }}</td><td>{{ s.acronym }} ({{ s.city }})</td>
+    <td><a href="{{ url_for('session_detail', session_id=s.session_id) }}">{{ s.title }}</a></td>
+    <td>{{ s.session_date }}</td><td>{{ s.start_time.strftime('%H:%M') }}–{{ s.end_time.strftime('%H:%M') }}</td>
+    <td>{{ s.room_label }}</td><td>{{ s.chair }}</td><td>{{ s.papers }}</td>
+    <td><a href="{{ url_for('session_edit', session_id=s.session_id) }}">Edit</a></td>
+  </tr>
+  {% else %}<tr><td colspan="9">No sessions.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

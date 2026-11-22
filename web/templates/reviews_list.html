@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Reviews{% endblock %}
+{% block content %}
+<h1>Reviews</h1>
+<div class="actions"><a class="btn" href="{{ url_for('review_new') }}">+ New review</a></div>
+<div class="wrap"><table>
+  <tr><th>ID</th><th>Paper</th><th>Reviewer</th><th>Score</th><th>Recommendation</th><th>Date</th><th></th></tr>
+  {% for r in reviews %}
+  <tr>
+    <td>{{ r.review_id }}</td>
+    <td><a href="{{ url_for('paper_detail', paper_id=r.paper_id) }}">{{ r.paper_id }}: {{ r.title }}</a></td>
+    <td><a href="{{ url_for('user_detail', user_id=r.reviewer_id) }}">{{ r.reviewer }}</a></td>
+    <td>{{ r.overall_score }}</td><td>{{ r.recommendation }}</td><td>{{ r.review_submission_date }}</td>
+    <td class="actions" style="margin:0">
+      <a href="{{ url_for('review_edit', review_id=r.review_id) }}">Edit</a>
+      <form class="inline" method="post" action="{{ url_for('review_delete', review_id=r.review_id) }}"
+            onsubmit="return confirm('Delete review {{ r.review_id }}?');"><button class="danger" type="submit">Delete</button></form>
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="7">No reviews.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

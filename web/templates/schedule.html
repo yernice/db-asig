@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Schedule{% endblock %}
+{% block content %}
+<h1>Accepted paper schedule</h1>
+<p class="hint">Rows come from the database view <code>accepted_paper_schedule</code>, ordered by conference, date, start time, session and paper.</p>
+<div class="wrap"><table>
+  <tr><th>Conference</th><th>Date</th><th>Time</th><th>Session</th><th>Room</th><th>Chair</th><th>Paper</th><th>Track</th><th>Corresponding author</th></tr>
+  {% for i in items %}
+  <tr><td>{{ i.acronym }}</td><td>{{ i.session_date }}</td><td>{{ i.start_time.strftime('%H:%M') }}–{{ i.end_time.strftime('%H:%M') }}</td>
+    <td>{{ i.session_title }}</td><td>{{ i.room_label }}</td><td>{{ i.chair_name }}</td>
+    <td><a href="{{ url_for('paper_detail', paper_id=i.paper_id) }}">{{ i.paper_id }}: {{ i.paper_title }}</a></td>
+    <td>{{ i.track_name }}</td><td>{{ i.corresponding_author_name }}<br><span class="hint">{{ i.corresponding_author_email }}</span></td></tr>
+  {% else %}<tr><td colspan="9">No scheduled papers.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

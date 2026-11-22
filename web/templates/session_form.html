@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit session' if session_id else 'New session' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Edit session %s'|format(session_id) if session_id else 'New session' }}</h1>
+<form class="card" method="post">
+  <div class="grid">
+    <div><label>Conference</label>
+      <select name="conference_id" required><option value="">— choose —</option>
+        {% for c in conferences %}<option value="{{ c.id }}" {% if form.get('conference_id')|string == c.id|string %}selected{% endif %}>{{ c.label }}</option>{% endfor %}
+      </select></div>
+    <div><label>Title</label><input type="text" name="title" value="{{ form.get('title', '') }}" required></div>
+    <div><label>Date</label><input type="date" name="session_date" value="{{ form.get('session_date', '') }}" required></div>
+    <div><label>Room</label><input type="text" name="room_label" value="{{ form.get('room_label', '') }}" required></div>
+    <div><label>Start time</label><input type="time" name="start_time" value="{{ form.get('start_time', '') }}" required></div>
+    <div><label>End time</label><input type="time" name="end_time" value="{{ form.get('end_time', '') }}" required></div>
+    <div><label>Chair <span class="hint">(must be in the conference's reviewer pool)</span></label>
+      <select name="chair_id" required><option value="">— choose —</option>
+        {% for r in reviewers %}<option value="{{ r.id }}" {% if form.get('chair_id')|string == r.id|string %}selected{% endif %}>{{ r.name }} (pools: {{ r.pools }})</option>{% endfor %}
+      </select></div>
+  </div>
+  <div class="actions"><button type="submit">Save</button>
+    <a class="btn light" href="{{ url_for('session_detail', session_id=session_id) if session_id else url_for('sessions_list') }}">Cancel</a></div>
+</form>
+{% endblock %}

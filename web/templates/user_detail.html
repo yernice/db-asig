@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ user.given_name }} {{ user.surname }}{% endblock %}
+{% block content %}
+<h1>{{ user.given_name }} {{ user.surname }} <span class="hint">user {{ user.user_id }}</span></h1>
+<div class="card">
+  <b>Email:</b> {{ user.email }} &nbsp; <b>Phone:</b> {{ user.phone_number }}<br>
+  <b>Affiliation:</b> {{ user.affiliation }}, {{ user.country }}
+</div>
+<div class="grid">
+  <div class="card"><b>Author profile</b><br>
+    {% if user.is_author %}ORCID: {{ user.orcid or '—' }}<br>Research areas:
+      {% for a in areas %}<span class="tag">{{ a.area_label }}</span>{% else %}—{% endfor %}
+    {% else %}<span class="hint">Not an author.</span>{% endif %}
+  </div>
+  <div class="card"><b>Reviewer profile</b><br>
+    {% if user.is_reviewer %}Experience: {{ user.years_experience }} years<br>Expertise:
+      {% for e in expertise %}<span class="tag">{{ e.area_label }}</span>{% else %}—{% endfor %}<br>
+      Reviewer pools: {% for p in pools %}<span class="tag">{{ p.acronym }}</span>{% else %}—{% endfor %}
+    {% else %}<span class="hint">Not a reviewer.</span>{% endif %}
+  </div>
+</div>
+{% if papers %}<h2>Authored papers</h2>
+<table><tr><th>Paper</th><th>Status</th><th>Position</th><th>Corresponding</th></tr>
+{% for p in papers %}<tr><td><a href="{{ url_for('paper_detail', paper_id=p.paper_id) }}">{{ p.paper_id }}: {{ p.title }}</a></td>
+<td><span class="status {{ p.status|replace(' ', '-') }}">{{ p.status }}</span></td><td>{{ p.author_position }}</td><td>{{ 'yes' if p.is_corresponding else '' }}</td></tr>{% endfor %}
+</table>{% endif %}
+{% if reviews %}<h2>Reviews written</h2>
+<table><tr><th>Review</th><th>Paper</th><th>Score</th><th>Recommendation</th></tr>
+{% for r in reviews %}<tr><td>{{ r.review_id }}</td><td><a href="{{ url_for('paper_detail', paper_id=r.paper_id) }}">{{ r.paper_id }}: {{ r.title }}</a></td><td>{{ r.overall_score }}</td><td>{{ r.recommendation }}</td></tr>{% endfor %}
+</table>{% endif %}
+<div class="actions">
+  <a class="btn" href="{{ url_for('user_edit', user_id=user.user_id) }}">Edit</a>
+  <form class="inline" method="post" action="{{ url_for('user_delete', user_id=user.user_id) }}"
+        onsubmit="return confirm('Delete this user and their author/reviewer profile?');">
+    <button class="danger" type="submit">Delete user</button></form>
+  <a class="btn light" href="{{ url_for('users_list') }}">Back to users</a>
+</div>
+{% endblock %}

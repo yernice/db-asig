@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Papers{% endblock %}
+{% block content %}
+<h1>Papers</h1>
+<div class="actions">
+  <a class="btn" href="{{ url_for('paper_new') }}">+ New paper</a>
+  <form class="inline" method="get">
+    <select name="status" onchange="this.form.submit()" style="width:auto">
+      <option value="">All statuses</option>
+      {% for s in statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+<div class="wrap"><table>
+  <tr><th>ID</th><th>Title</th><th>Conference / track</th><th>Status</th><th>Session</th><th>Corresponding author</th><th>Reviews</th><th>Version</th></tr>
+  {% for p in papers %}
+  <tr>
+    <td>{{ p.paper_id }}</td>
+    <td><a href="{{ url_for('paper_detail', paper_id=p.paper_id) }}">{{ p.title }}</a></td>
+    <td>{{ p.acronym }} / {{ p.track }}</td>
+    <td><span class="status {{ p.status|replace(' ', '-') }}">{{ p.status }}</span></td>
+    <td>{{ p.session_title or '—' }}</td>
+    <td>{{ p.corresponding or '—' }}</td>
+    <td>{{ p.reviews }}</td><td>v{{ p.current_version }}</td>
+  </tr>
+  {% else %}<tr><td colspan="8">No papers.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

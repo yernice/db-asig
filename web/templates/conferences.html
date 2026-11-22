@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Conferences{% endblock %}
+{% block content %}
+<h1>Conferences <span class="hint">(read-only, loaded by the seed script)</span></h1>
+{% for c in confs %}
+<div class="card">
+  <h2 style="margin-top:0">{{ c.acronym }} – {{ c.name }} <span class="hint">conference {{ c.conference_id }}</span></h2>
+  <b>Where / when:</b> {{ c.city }}, {{ c.country }} · {{ c.start_date }} to {{ c.end_date }}<br>
+  <b>Deadlines:</b> submission {{ c.submission_deadline }}, review {{ c.review_deadline }}<br>
+  <b>Hosts:</b> {% for h in hosts if h.conference_id == c.conference_id %}<span class="tag">{{ h.host_name }}</span>{% else %}—{% endfor %}<br>
+  <b>Reviewer pool:</b> {% for r in pool if r.conference_id == c.conference_id %}<a class="tag" href="{{ url_for('user_detail', user_id=r.user_id) }}">{{ r.name }}</a>{% else %}—{% endfor %}
+  <p>{{ c.description }}</p>
+  <b>Tracks</b>
+  <div class="wrap"><table><tr><th>ID</th><th>Track</th><th>Research area</th><th>Coordinator</th><th>Papers</th></tr>
+  {% for t in tracks if t.conference_id == c.conference_id %}
+    <tr><td>{{ t.track_id }}</td><td>{{ t.name }}</td><td>{{ t.research_area }}</td><td>{{ t.coordinator }}</td><td>{{ t.papers }}</td></tr>
+  {% else %}<tr><td colspan="5">No tracks.</td></tr>{% endfor %}</table></div>
+  <b>Sessions</b>
+  <div class="wrap"><table><tr><th>ID</th><th>Session</th><th>Date</th><th>Time</th><th>Room</th><th>Chair</th><th>Papers</th></tr>
+  {% for s in sessions if s.conference_id == c.conference_id %}
+    <tr><td>{{ s.session_id }}</td><td><a href="{{ url_for('session_detail', session_id=s.session_id) }}">{{ s.title }}</a></td>
+    <td>{{ s.session_date }}</td><td>{{ s.start_time.strftime('%H:%M') }}–{{ s.end_time.strftime('%H:%M') }}</td>
+    <td>{{ s.room_label }}</td><td>{{ s.chair }}</td><td>{{ s.papers }}</td></tr>
+  {% else %}<tr><td colspan="7">No sessions.</td></tr>{% endfor %}</table></div>
+</div>
+{% endfor %}
+{% endblock %}

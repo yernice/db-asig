@@ -1,0 +1,18 @@
+# Render Blueprint: New > Blueprint > pick this repository.
+# (Or create a Web Service by hand with the same build/start commands.)
+services:
+  - type: web
+    name: conference-review-app
+    runtime: python
+    plan: free
+    region: singapore    # same region as the Neon database (AWS Singapore)
+    rootDir: web
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.1
+      - key: DATABASE_URL
+        sync: false          # paste the Neon connection string in the Render dashboard
+      - key: SECRET_KEY
+        generateValue: true

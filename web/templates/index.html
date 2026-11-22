@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Research Conference and Paper Review Management</h1>
+<div class="stats">
+  <a href="{{ url_for('users_list') }}"><b>{{ counts.users }}</b>Users</a>
+  <a href="{{ url_for('papers_list') }}"><b>{{ counts.papers }}</b>Papers</a>
+  <a href="{{ url_for('reviews_list') }}"><b>{{ counts.reviews }}</b>Reviews</a>
+  <a href="{{ url_for('sessions_list') }}"><b>{{ counts.sessions }}</b>Sessions</a>
+  <a href="{{ url_for('conferences') }}"><b>{{ counts.conferences }}</b>Conferences</a>
+  <a href="{{ url_for('conferences') }}"><b>{{ counts.tracks }}</b>Tracks</a>
+</div>
+<h2>What you can do</h2>
+<ul>
+  <li>Create, view, edit and delete <a href="{{ url_for('users_list') }}">users</a> (with author and reviewer profiles),
+      <a href="{{ url_for('papers_list') }}">papers</a> (with authors, keywords and versions),
+      <a href="{{ url_for('reviews_list') }}">reviews</a> and <a href="{{ url_for('sessions_list') }}">sessions</a>.</li>
+  <li>Conferences, tracks, reviewer pools and hosts come from the seed data and are read-only.</li>
+  <li>The <a href="{{ url_for('schedule') }}">schedule</a> page reads the <code>accepted_paper_schedule</code> view.</li>
+</ul>
+<h2>Rules checked on every save</h2>
+<ul>
+  <li><b>No self-reviews:</b> a review is rejected if its reviewer is an author of the paper, and an author change is
+      rejected if a new author already reviewed the paper.</li>
+  <li><b>Valid session assignment:</b> only accepted papers can be scheduled, and the paper's track and the session
+      must belong to the same conference (checked when status, track, session or session conference changes).</li>
+  <li>All database constraints (unique email, one review per reviewer and paper, scores 1-5, unique author positions,
+      time and date order, ...) are reported as readable messages. Each save runs in one transaction.</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit paper' if paper_id else 'New paper' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Edit paper %s'|format(paper_id) if paper_id else 'New paper' }}</h1>
+<form class="card" method="post">
+  <label>Title</label><input type="text" name="title" value="{{ form.get('title', '') }}" required>
+  <label>Abstract</label><textarea name="abstract" required>{{ form.get('abstract', '') }}</textarea>
+  <div class="grid">
+    <div><label>Track</label>
+      <select name="track_id" required><option value="">— choose —</option>
+        {% for t in tracks %}<option value="{{ t.id }}" {% if form.get('track_id')|string == t.id|string %}selected{% endif %}>{{ t.label }}</option>{% endfor %}
+      </select></div>
+    <div><label>Submission date</label><input type="date" name="submission_date" value="{{ form.get('submission_date', '') }}" required></div>
+    <div><label>Status</label>
+      <select name="status">{% for s in statuses %}<option value="{{ s }}" {% if form.get('status') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+    <div><label>Session <span class="hint">(accepted papers only, same conference)</span></label>
+      <select name="session_id"><option value="">— not scheduled —</option>
+        {% for s in sessions %}<option value="{{ s.id }}" {% if form.get('session_id')|string == s.id|string %}selected{% endif %}>{{ s.label }}</option>{% endfor %}
+      </select></div>
+  </div>
+
+  <label>Authors <span class="hint">(choose authors, their positions, and exactly one corresponding author)</span></label>
+  <table class="authors">
+    <tr><td></td><td class="hint">Author</td><td class="hint">Position</td><td class="hint">Corresponding</td></tr>
+    {% for i in author_rows %}
+    <tr><td class="hint">{{ i + 1 }}.</td>
+      <td><select name="author_{{ i }}"><option value="">—</option>
+        {% for a in authors %}<option value="{{ a.id }}" {% if form.get('author_%d'|format(i))|string == a.id|string %}selected{% endif %}>{{ a.name }} ({{ a.email }})</option>{% endfor %}
+      </select></td>
+      <td><input type="number" name="position_{{ i }}" min="1" style="width:80px" value="{{ form.get('position_%d'|format(i), '') }}"></td>
+      <td><input type="radio" name="corresponding" value="{{ i }}" {% if form.get('corresponding')|string == i|string %}checked{% endif %}></td>
+    </tr>{% endfor %}
+  </table>
+
+  <label>Keywords <span class="hint">(one per line)</span></label>
+  <textarea name="keywords">{{ form.get('keywords', '') }}</textarea>
+
+  {% if not paper_id %}
+  <div class="grid">
+    <div><label>Version 1: file location</label><input type="text" name="file_location" value="{{ form.get('file_location', '') }}" placeholder="papers/new/v1.pdf" required></div>
+    <div><label>Version 1: change note <span class="hint">(optional)</span></label><input type="text" name="change_note" value="{{ form.get('change_note', '') }}"></div>
+  </div>
+  {% else %}<p class="hint">Versions are managed on the paper's page.</p>{% endif %}
+
+  <div class="actions"><button type="submit">Save</button>
+    <a class="btn light" href="{{ url_for('paper_detail', paper_id=paper_id) if paper_id else url_for('papers_list') }}">Cancel</a></div>
+</form>
+{% endblock %}
