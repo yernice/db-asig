@@ -83,3 +83,35 @@ the original dataset before independent assignment demonstrations:
 Restoring deletes existing assignment data. These commands use the database in
 `DATABASE_URL` and do not create a PostgreSQL database. Use the root `seed.sql`
 for the final assignment dataset; `web/db/sample_seed.sql` is a separate sample.
+
+## Tasks 5.1-5.4: Simple retrieval queries
+
+After loading the original seed, run in Git Bash:
+
+```bash
+./.venv/Scripts/python.exe scripts.py simple-queries
+```
+
+This runs all four queries, printing each task number, SQL, bound parameter values,
+column names, results, and returned row count. It only reads existing data; it does
+not recreate tables or load the seed. If you have edited data through the web app,
+restore the seed using the Task 2 instructions before the assignment demonstration.
+
+Expected results for the root seed dataset:
+
+| Task | Inputs | Expected result |
+| --- | --- | --- |
+| 5.1 | Status `accepted` | Papers 1, 2, 3, 9, each with its corresponding author, track, and conference. Includes unscheduled paper 3. |
+| 5.2 | Case-insensitive phrase `machine learning` | Paper 6, whose abstract contains `MACHINE LEARNING`. |
+| 5.3 | Paper ID `1` | Versions 3 then 1, including file locations and upload timestamps. |
+| 5.4 | Conference ID `1`, expertise `Databases`, minimum experience `3` | Reviewers 1, 4, 10, each once. |
+
+Choose different paper/conference IDs with arguments:
+
+```bash
+./.venv/Scripts/python.exe scripts.py simple-queries --paper-id 2 --conference-id 2
+```
+
+For those IDs, task 5.3 returns version 1 of paper 2, and task 5.4 returns reviewer 4.
+Tasks 5.1 and 5.2 keep their assignment-defined filters. A selection with no matches
+prints the column names and a zero row count.
