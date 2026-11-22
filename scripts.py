@@ -102,7 +102,6 @@ def update_review_deadlines(connection):
 
 
 def paper_deletion_counts(connection, phase, paper_ids):
-    # Count children using the original IDs even after their parents disappear.
     return show_query(connection, f"4.1 - {phase}: targeted rows and dependents", """
         SELECT 'paper' AS table_name, COUNT(*) AS row_count
         FROM paper WHERE paper_id = ANY(:paper_ids)
@@ -130,7 +129,6 @@ def paper_deletion_survivors(connection, phase):
 
 def delete_withdrawn_papers(connection):
     parameters = {"email": "amina.aminova@example.com", "status": "withdrawn"}
-    # Matching is by email and corresponding authorship, not name or coauthorship.
     target_condition = """
         p.status = :status AND EXISTS (
             SELECT 1 FROM paper_author AS pa
@@ -144,7 +142,6 @@ def delete_withdrawn_papers(connection):
     paper_ids = [row["paper_id"] for row in targets]
     paper_deletion_counts(connection, "Before", paper_ids)
     paper_deletion_survivors(connection, "Before")
-    # All four dependent foreign keys use ON DELETE CASCADE in schema.sql.
     deleted = show_query(connection, "4.1 - Delete withdrawn papers",
                          f"DELETE FROM paper AS p WHERE {target_condition} RETURNING p.paper_id, p.title",
                          parameters)
@@ -202,7 +199,6 @@ def run_deletions():
 
 
 def accepted_papers(connection):
-    # Task 5.1: join only the corresponding author to keep one row per paper.
     return show_query(connection, "5.1 - Accepted papers", """
         SELECT p.paper_id, p.title,
                u.given_name || ' ' || u.surname AS corresponding_author_name,
@@ -219,7 +215,6 @@ def accepted_papers(connection):
 
 
 def machine_learning_papers(connection):
-    # Task 5.2: PostgreSQL ILIKE performs the case-insensitive search in SQL.
     return show_query(connection, "5.2 - Abstract search", """
         SELECT paper_id, title
         FROM paper
@@ -229,7 +224,6 @@ def machine_learning_papers(connection):
 
 
 def paper_versions(connection, paper_id):
-    # Task 5.3: version numbers can have gaps; highest number comes first.
     return show_query(connection, "5.3 - Paper versions", """
         SELECT version_no, file_location, uploaded_at
         FROM paper_version
@@ -239,7 +233,6 @@ def paper_versions(connection, paper_id):
 
 
 def conference_reviewers(connection, conference_id):
-    # Task 5.4: EXISTS filters membership and expertise without multiplying rows.
     return show_query(connection, "5.4 - Conference reviewers", """
         SELECT r.reviewer_id, u.given_name || ' ' || u.surname AS full_name, u.email
         FROM reviewer AS r
@@ -269,7 +262,6 @@ def run_simple_queries(paper_id, conference_id):
 
 
 def track_statistics(connection):
-    # Task 6.1: authorship joins multiply papers, so count distinct IDs.
     return show_query(connection, "6.1 - Track statistics", """
         SELECT t.track_id, t.name AS track_name, t.conference_id,
                COUNT(DISTINCT p.paper_id) AS paper_count,
@@ -283,7 +275,6 @@ def track_statistics(connection):
 
 
 def reviewer_statistics(connection):
-    # Task 6.2: count review IDs rather than the outer join's empty row.
     return show_query(connection, "6.2 - Reviewer statistics", """
         SELECT r.reviewer_id, u.given_name || ' ' || u.surname AS full_name,
                COUNT(rv.review_id) AS review_count,
@@ -297,7 +288,6 @@ def reviewer_statistics(connection):
 
 
 def conference_statistics(connection):
-    # Task 6.3: count papers once while allowing every review into the average.
     return show_query(connection, "6.3 - Conference statistics", """
         SELECT c.conference_id, c.acronym,
                COUNT(DISTINCT p.paper_id) AS paper_count,
@@ -314,7 +304,6 @@ def conference_statistics(connection):
 
 
 def above_average_reviewers(connection):
-    # Task 6.4: build counts for ALL reviewers, including zero-review users.
     return show_query(connection, "6.4 - Above-average reviewers", """
         WITH review_counts AS (
             SELECT r.reviewer_id, COUNT(rv.review_id) AS review_count
@@ -345,7 +334,6 @@ def run_complex_queries():
 
 
 def acceptance_rates(connection):
-    # Task 7: only decisions enter the denominator; zero decisions yield NULL.
     return show_query(connection, "7 - Conference acceptance rates", """
         WITH decisions AS (
             SELECT c.conference_id, c.acronym,
@@ -384,9 +372,6 @@ def scheduled_papers(connection):
 
 def run_schedule_view():
     from database import engine
-
-    # Reuse the view definition in schema.sql; unlike its functions, this SELECT
-    # definition has no internal semicolons. Do not run the schema's DROP commands.
     schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
     start = schema_sql.index("CREATE VIEW accepted_paper_schedule AS")
     end = schema_sql.index(";", start) + 1
