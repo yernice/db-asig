@@ -404,6 +404,8 @@ def main():
             "To restore the seed dataset, run init-schema followed by seed."
         ),
     )
+    commands.add_parser("updates", help="Demonstrate tasks 3.1-3.2, rolling back each update.")
+    commands.add_parser("deletions", help="Demonstrate tasks 4.1-4.2, rolling back each deletion.")
     simple_queries = commands.add_parser(
         "simple-queries",
         help="Run retrieval tasks 5.1-5.4 against the existing data.",
@@ -420,8 +422,6 @@ def main():
     commands.add_parser("complex-queries", help="Run aggregate tasks 6.1-6.4.")
     commands.add_parser("acceptance-rates", help="Run task 7: conference acceptance rates.")
     commands.add_parser("schedule-view", help="Run task 8: create and query the schedule view.")
-    commands.add_parser("updates", help="Demonstrate tasks 3.1-3.2, rolling back each update.")
-    commands.add_parser("deletions", help="Demonstrate tasks 4.1-4.2, rolling back each deletion.")
     args = parser.parse_args()
 
     try:
