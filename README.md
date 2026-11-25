@@ -36,13 +36,26 @@ This checks dependency loading and URL parsing; it does not connect to PostgreSQ
 or create tables. Scripts and the web app should import `engine` or `SessionLocal`
 from `database.py`. Add the web framework dependency when the team selects one.
 
+## Numbered task commands
+
+Each assignment task has one function in `scripts.py`: `task_1()` through
+`task_8()`. Run the matching CLI command, such as `python scripts.py task-3`.
+Only the selected task runs. Tasks 3-6 contain their numbered subparts directly,
+with a shared `show_query()` helper for executing SQL and printing results.
+
+The flow is: terminal command -> `main()` -> `task_N()` -> `show_query()` -> PostgreSQL.
+Tasks 1 and 2 execute the SQL files directly; task 8 also executes view-creation SQL.
+Tasks 3 and 4 use a separate transaction for each mutation and always roll it back.
+
+The former descriptive command names have been replaced by `task-1` to `task-8`.
+
 ## Task 1: Create the database schema
 
 In Git Bash, set your own PostgreSQL connection details, then run:
 
 ```bash
 export DATABASE_URL='postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/db-assignment'
-./.venv/Scripts/python.exe scripts.py init-schema
+./.venv/Scripts/python.exe scripts.py task-1
 ```
 
 The database named in the URL must already exist. Use your actual database name.
@@ -61,7 +74,7 @@ Importing `scripts.py` or requesting `--help` does not run the schema or require
 After creating the schema, run in Git Bash:
 
 ```bash
-./.venv/Scripts/python.exe scripts.py seed
+./.venv/Scripts/python.exe scripts.py task-2
 ```
 
 This loads the team's root `seed.sql` through Python and SQLAlchemy. It prints the
@@ -71,13 +84,13 @@ rows. PostgreSQL sequence counters may still advance after a failed transaction.
 The script leaves `seed.sql` unchanged and omits its outer `BEGIN`/`COMMIT` when
 executing it, so SQLAlchemy controls the transaction.
 
-Run `seed` once on empty tables. Running it again on populated tables fails on
+Run `task-2` once on empty tables. Running it again on populated tables fails on
 existing keys; it does not silently overwrite data. Use this sequence to restore
 the original dataset before independent assignment demonstrations:
 
 ```bash
-./.venv/Scripts/python.exe scripts.py init-schema &&
-./.venv/Scripts/python.exe scripts.py seed
+./.venv/Scripts/python.exe scripts.py task-1 &&
+./.venv/Scripts/python.exe scripts.py task-2
 ```
 
 Restoring deletes existing assignment data. These commands use the database in
@@ -90,8 +103,8 @@ Run these against the original root seed dataset. If records have changed, resto
 the seed using Task 2's instructions first. These commands do not reset the database.
 
 ```bash
-./.venv/Scripts/python.exe scripts.py updates
-./.venv/Scripts/python.exe scripts.py deletions
+./.venv/Scripts/python.exe scripts.py task-3
+./.venv/Scripts/python.exe scripts.py task-4
 ```
 
 Each operation prints its task number, SQL, bound inputs, before/after results,
@@ -120,7 +133,7 @@ each required operation affects the intended records.
 After loading the original seed, run in Git Bash:
 
 ```bash
-./.venv/Scripts/python.exe scripts.py simple-queries
+./.venv/Scripts/python.exe scripts.py task-5
 ```
 
 This runs all four queries, printing each task number, SQL, bound parameter values,
@@ -140,7 +153,7 @@ Expected results for the root seed dataset:
 Choose different paper/conference IDs with arguments:
 
 ```bash
-./.venv/Scripts/python.exe scripts.py simple-queries --paper-id 2 --conference-id 2
+./.venv/Scripts/python.exe scripts.py task-5 --paper-id 2 --conference-id 2
 ```
 
 For those IDs, task 5.3 returns version 1 of paper 2, and task 5.4 returns reviewer 4.
@@ -156,7 +169,7 @@ Each command prints its numbered SQL, bound parameters, columns, and results.
 ### Task 6: Aggregate queries
 
 ```bash
-./.venv/Scripts/python.exe scripts.py complex-queries
+./.venv/Scripts/python.exe scripts.py task-6
 ```
 
 Check each numbered section:
@@ -173,7 +186,7 @@ Tasks 6.2-6.4 print PostgreSQL's numeric averages without rounding them.
 ### Task 7: Derived acceptance rate
 
 ```bash
-./.venv/Scripts/python.exe scripts.py acceptance-rates
+./.venv/Scripts/python.exe scripts.py task-7
 ```
 
 | Conference ID | Acronym | Accepted | Rejected | Acceptance rate (%) |
@@ -188,7 +201,7 @@ existing data and do not seed, reset, or update it.
 ### Task 8: Create and query the view
 
 ```bash
-./.venv/Scripts/python.exe scripts.py schedule-view
+./.venv/Scripts/python.exe scripts.py task-8
 ```
 
 This creates or replaces the real database view `accepted_paper_schedule`, using
