@@ -1,216 +1,179 @@
-# DB Assignment 3
+# CSCI 341 - Assignment 3
 
-Authors: Olzhas, Nurislam, Yernar
+Research Conference and Paper Review Management System, Fall 2026.
 
-## Local setup
+## Team and contributions
 
-Use Python 3.10 or newer and a running PostgreSQL server.
+| Given name | Surname | Student ID | Contribution |
+| --- | --- | --- | --- |
+| Olzhas | Sabyrzhan | 202432854 | Part 1 |
+| Yernar | Duzelbay | 202217878 | Part 2 |
+| Nurislam | Zhanibek | 202361729 | Part 3 |
 
-Create a virtual environment and install the shared dependencies (PowerShell):
+## Project contents
 
-```powershell
+| File or directory | Purpose |
+| --- | --- |
+| `schema.sql` | PostgreSQL tables, constraints, indexes, schedule view, and five validation triggers. |
+| `seed.sql` | Final assignment dataset, including sequence resets after explicit-ID inserts. |
+| `database.py` | Part 2 SQLAlchemy engine and session factory; reads `DATABASE_URL`. |
+| `scripts.py` | Numbered CLI commands `task-1` through `task-8`. |
+| `requirements.txt` | Dependencies for Part 2. |
+| `web/app.py`, `web/templates/`, `web/static/` | Flask application and interface. |
+| `web/requirements.txt` | Separate dependencies for the web application. |
+| `web/init_db.py` | Alternative database loader using psycopg2 directly. It is not the Part 2 SQLAlchemy demonstration. |
+| `web/db/` | A schema copy and a separate development sample seed. Use root `seed.sql` for the final assignment dataset. |
+| `render.yaml` | Render deployment configuration, with persistent PostgreSQL supplied separately. |
+
+## Software and versions
+
+Use PostgreSQL, not SQLite or MySQL, because the supplied SQL uses PostgreSQL-specific features.
+
+| Component | Version or configuration |
+| --- | --- |
+| Part 2 Python | Python 3.14.3; Python 3.10 or newer is required by the selected driver series. |
+| Part 2 SQLAlchemy | `>=2.0,<2.1` |
+| Part 2 PostgreSQL driver | `psycopg[binary]>=3.3,<4` |
+| PostgreSQL | 18 |
+| Web dependencies | Flask 3.1.3, SQLAlchemy 2.1.9, psycopg2-binary 2.9.13, gunicorn 27.0.1, as pinned in `web/requirements.txt`. |
+| Hosted Python | 3.13.1 in `render.yaml`. Gunicorn is used on the Linux host; use `python web/app.py` locally. |
+
+The root and web requirements select different SQLAlchemy/driver versions. Install them in separate virtual environments.
+
+## Local setup for Part 2
+
+The following commands use Git Bash on Windows from the repository root. On Linux/macOS, use `.venv/bin/python` instead of `./.venv/Scripts/python.exe`.
+
+```bash
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
-SQLAlchemy provides database access; psycopg is the PostgreSQL driver. The
-binary extra includes its client libraries, so no compiler is required.
-PostgreSQL itself must be installed or hosted separately.
+Create an empty database named `db-assignment` in pgAdmin/DBeaver, or use PostgreSQL command-line tools:
 
-Set the connection URL in each terminal before running project code:
-
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg://postgres:password@localhost:5432/db_assignment"
+```bash
+createdb -h localhost -p 5432 -U postgres db-assignment
 ```
 
-Replace the example credentials and database name with your own. Create that
-database in PostgreSQL first. The URL is read from the environment, not a .env file.
-
-Check that the shared setup imports successfully:
-
-```powershell
-.\.venv\Scripts\python.exe -c "from database import engine, SessionLocal; print('Database setup loaded')"
-```
-
-This checks dependency loading and URL parsing; it does not connect to PostgreSQL
-or create tables. Scripts and the web app should import `engine` or `SessionLocal`
-from `database.py`. Add the web framework dependency when the team selects one.
-
-## Numbered task commands
-
-Each assignment task has one function in `scripts.py`: `task_1()` through
-`task_8()`. Run the matching CLI command, such as `python scripts.py task-3`.
-Only the selected task runs. Tasks 3-6 contain their numbered subparts directly,
-with a shared `show_query()` helper for executing SQL and printing results.
-
-The flow is: terminal command -> `main()` -> `task_N()` -> `show_query()` -> PostgreSQL.
-Tasks 1 and 2 execute the SQL files directly; task 8 also executes view-creation SQL.
-Tasks 3 and 4 use a separate transaction for each mutation and always roll it back.
-
-The former descriptive command names have been replaced by `task-1` to `task-8`.
-
-## Task 1: Create the database schema
-
-In Git Bash, set your own PostgreSQL connection details, then run:
+Set connection details in the current terminal; substitute your own password and database name:
 
 ```bash
 export DATABASE_URL='postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/db-assignment'
-./.venv/Scripts/python.exe scripts.py task-1
 ```
 
-The database named in the URL must already exist. Use your actual database name.
-This command runs `schema.sql`, which drops existing assignment tables and their
-data, then recreates the tables, constraints, indexes, view, functions, and triggers.
-Use a dedicated assignment database. It does not insert seed data.
-
-The script prints the task number, SQL, and resulting table names. Changes commit
-only if the whole operation succeeds; a failure rolls back the transaction.
-The SQL file is located relative to `scripts.py`, independent of the current directory.
-Importing `scripts.py` or requesting `--help` does not run the schema or require
-`DATABASE_URL`.
-
-## Task 2: Insert the sample data
-
-After creating the schema, run in Git Bash:
-
-```bash
-./.venv/Scripts/python.exe scripts.py task-2
-```
-
-This loads the team's root `seed.sql` through Python and SQLAlchemy. It prints the
-task number, seed SQL, and each table's count query and result (all 15 tables).
-Inserts and count checks run in one transaction; a failure rolls back the inserted
-rows. PostgreSQL sequence counters may still advance after a failed transaction.
-The script leaves `seed.sql` unchanged and omits its outer `BEGIN`/`COMMIT` when
-executing it, so SQLAlchemy controls the transaction.
-
-Run `task-2` once on empty tables. Running it again on populated tables fails on
-existing keys; it does not silently overwrite data. Use this sequence to restore
-the original dataset before independent assignment demonstrations:
+## Create, seed, and restore the original dataset
 
 ```bash
 ./.venv/Scripts/python.exe scripts.py task-1 &&
 ./.venv/Scripts/python.exe scripts.py task-2
 ```
 
-Restoring deletes existing assignment data. These commands use the database in
-`DATABASE_URL` and do not create a PostgreSQL database. Use the root `seed.sql`
-for the final assignment dataset; `web/db/sample_seed.sql` is a separate sample.
+Task 1 runs `schema.sql` and task 2 runs `seed.sql`. Each uses a transaction that commits on success. The seed loader omits the file's outer `BEGIN`/`COMMIT` so SQLAlchemy controls its transaction. PostgreSQL sequence counters can advance even if a transaction fails.
 
-## Tasks 3 and 4: Update and delete demonstrations
+Task 1 drops existing assignment tables and their data. Use a dedicated demonstration database. Task 2 expects empty tables; repeating it on populated tables fails on duplicate keys. Running the two commands above restores the original seed after web edits or other persistent changes.
 
-Run these against the original root seed dataset. If records have changed, restore
-the seed using Task 2's instructions first. These commands do not reset the database.
+The seed has 15 tables, 10 users, 10 papers, 11 versions, 10 completed reviews, and 3 conferences. It includes all five statuses, author-only/reviewer-only/dual-role users, multiple authors and versions, empty tracks and sessions, a conference without papers, a reviewer without reviews, and accepted papers with and without sessions.
+
+## Run Part 2
+
+Each command calls the same-numbered function in `scripts.py`. Most statements are executed by `show_query()`, which prints task labels, SQL, bound inputs, column names, rows, and result counts. Query logic runs in PostgreSQL.
+
+| Command after `python scripts.py` | Operation |
+| --- | --- |
+| `task-1` | Create schema and constraints; destructive reset. |
+| `task-2` | Load seed and show all table counts. |
+| `task-3` | Updates 3.1 and 3.2, with before/after results and independent rollbacks. |
+| `task-4` | Deletions 4.1 and 4.2, dependent/protected-record checks, and independent rollbacks. |
+| `task-5 --paper-id 1 --conference-id 1` | Simple queries 5.1-5.4. Both IDs default to 1. |
+| `task-6` | Aggregate queries 6.1-6.4. |
+| `task-7` | Acceptance rates using accepted and rejected papers only. |
+| `task-8` | Create/replace and query `accepted_paper_schedule`. |
+
+For example:
 
 ```bash
 ./.venv/Scripts/python.exe scripts.py task-3
 ./.venv/Scripts/python.exe scripts.py task-4
-```
-
-Each operation prints its task number, SQL, bound inputs, before/after results,
-and the affected rows using PostgreSQL `RETURNING`. Each runs in a separate
-transaction that always rolls back, including if an operation fails. The displayed
-after-state is temporary; the next task and later queries see the original data.
-There is no commit option for these demonstration commands.
-
-Expected checks using the root seed:
-
-| Task | Before | Temporary after-state |
-| --- | --- | --- |
-| 3.1 | Arman, identified by `arman.armanov@example.com`, has phone `+77010000001`. | Phone becomes `+77773414141`; one user is affected. |
-| 3.2 | Conference IDs 1, 2, 3 have review deadlines `2026-11-15`, `2026-12-01`, `2027-05-15`. | One conditional UPDATE changes them to `2026-11-22` (Astana, +7 days), `2026-12-04`, `2027-05-18` (elsewhere, +3 days). |
-| 4.1 | Amina (`amina.aminova@example.com`) is corresponding author of withdrawn papers 7 and 8. Their dependent counts are 4 authorship rows, 3 keywords, 2 versions, and 1 review. | Both papers and all those dependent rows disappear through foreign-key cascades. Papers 1-6, 9, 10 remain, along with all 10 users, 5 tracks, and 3 conferences. |
-| 4.2 | Session 2 is empty and in Astana. Sessions 1 and 3 have papers; session 4 is empty but outside Astana. | Only session 2 disappears. Sessions 1, 3, 4 and all conferences remain. |
-
-After each operation, look for `ROLLBACK complete`. Running the same commands again
-should show the same before-state and affected rows. Task 4.1 prints dependent-row
-counts using the original target paper IDs, so the after-counts must all be zero.
-An empty match prints zero affected rows; use the original seed for grading so
-each required operation affects the intended records.
-
-## Tasks 5.1-5.4: Simple retrieval queries
-
-After loading the original seed, run in Git Bash:
-
-```bash
-./.venv/Scripts/python.exe scripts.py task-5
-```
-
-This runs all four queries, printing each task number, SQL, bound parameter values,
-column names, results, and returned row count. It only reads existing data; it does
-not recreate tables or load the seed. If you have edited data through the web app,
-restore the seed using the Task 2 instructions before the assignment demonstration.
-
-Expected results for the root seed dataset:
-
-| Task | Inputs | Expected result |
-| --- | --- | --- |
-| 5.1 | Status `accepted` | Papers 1, 2, 3, 9, each with its corresponding author, track, and conference. Includes unscheduled paper 3. |
-| 5.2 | Case-insensitive phrase `machine learning` | Paper 6, whose abstract contains `MACHINE LEARNING`. |
-| 5.3 | Paper ID `1` | Versions 3 then 1, including file locations and upload timestamps. |
-| 5.4 | Conference ID `1`, expertise `Databases`, minimum experience `3` | Reviewers 1, 4, 10, each once. |
-
-Choose different paper/conference IDs with arguments:
-
-```bash
-./.venv/Scripts/python.exe scripts.py task-5 --paper-id 2 --conference-id 2
-```
-
-For those IDs, task 5.3 returns version 1 of paper 2, and task 5.4 returns reviewer 4.
-Tasks 5.1 and 5.2 keep their assignment-defined filters. A selection with no matches
-prints the column names and a zero row count.
-
-## Tasks 6, 7, and 8: Aggregates, acceptance rates, and schedule view
-
-Use the original root seed dataset for these checks. If you have edited records,
-restore it using Task 2's instructions first (restoration deletes existing data).
-Each command prints its numbered SQL, bound parameters, columns, and results.
-
-### Task 6: Aggregate queries
-
-```bash
+./.venv/Scripts/python.exe scripts.py task-5 --paper-id 1 --conference-id 1
 ./.venv/Scripts/python.exe scripts.py task-6
-```
-
-Check each numbered section:
-
-| Task | Expected result |
-| --- | --- |
-| 6.1 | Track IDs 1-5 have `(paper_count, author_count)` of `(5, 5)`, `(3, 4)`, `(0, 0)`, `(2, 4)`, `(0, 0)`. Authors appearing on multiple papers in a track count once. |
-| 6.2 | Reviewer IDs `1, 4, 5, 6, 7, 8, 10` have review counts `1, 3, 1, 3, 0, 1, 1`; their average scores are `3`, approximately `4.6667`, `2`, `3`, `NULL`, `4`, `5`. |
-| 6.3 | Conference 1: 8 papers, 3 accepted, mean score `26/7` (approximately `3.7143`). Conference 2: 2 papers, 1 accepted, mean score `11/3` (approximately `3.6667`). Conference 3: 0 papers, 0 accepted, `NULL` mean. |
-| 6.4 | Only reviewers 4 and 6, each with 3 reviews. The overall mean count is `10/7` (approximately `1.4286`), including zero-review reviewer 7. |
-
-Tasks 6.2-6.4 print PostgreSQL's numeric averages without rounding them.
-
-### Task 7: Derived acceptance rate
-
-```bash
 ./.venv/Scripts/python.exe scripts.py task-7
-```
-
-| Conference ID | Acronym | Accepted | Rejected | Acceptance rate (%) |
-| --- | --- | --- | --- | --- |
-| 1 | SRCML | 3 | 1 | 75.00 |
-| 2 | SVR | 1 | 1 | 50.00 |
-| 3 | TWDMC | 0 | 0 | NULL |
-
-The denominator includes only accepted and rejected papers. These commands read
-existing data and do not seed, reset, or update it.
-
-### Task 8: Create and query the view
-
-```bash
 ./.venv/Scripts/python.exe scripts.py task-8
 ```
 
-This creates or replaces the real database view `accepted_paper_schedule`, using
-its definition from `schema.sql`, and queries it. It does not run the rest of the
-schema file or change paper data. It can recreate the view if it is missing.
+Run independent demonstrations against the original seed. Tasks 3 and 4 make real changes inside separate transactions, print the temporary after-state, and always roll back, including on failure. There is no commit option. Tasks 5-7 read data; task 8 commits only the view definition. A separate DBeaver connection normally cannot see these uncommitted mutations.
 
-Expect paper IDs `1, 2, 9`, in that order, assigned to session IDs `1, 1, 3`.
-Accepted paper 3 must be absent because it has no session. Each row includes the
-paper and conference details, track, session title/date/times/room, chair name,
-and corresponding author's name/email. Ordering is by conference ID, session
-date, start time, session ID, then paper ID. In pgAdmin, refresh
-**Schemas > public > Views** to see the view; no schedule result table is created.
+Alternative: `task-5 --paper-id 2 --conference-id 2` returns paper 2's version 1 and reviewer 4 in sections 5.3/5.4. Other filters are unchanged. Inputs with no matches print zero rows. Aggregate score averages are not rounded, except the acceptance percentage in task 7.
+
+## Run the web application locally
+
+First create/load the database with root tasks 1 and 2 above. Then install the web dependencies in a separate environment:
+
+```bash
+python -m venv web/.venv
+./web/.venv/Scripts/python.exe -m pip install -r web/requirements.txt
+export DATABASE_URL='postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/db-assignment'
+export SECRET_KEY='replace-with-a-local-random-secret'
+./web/.venv/Scripts/python.exe web/app.py
+```
+
+Open `http://127.0.0.1:5000`. On Linux/macOS, use `web/.venv/bin/python`. The `psycopg2` URL matches the web driver's dependencies. Before returning to Part 2 commands, set the URL back to `postgresql+psycopg://...` for the root environment.
+
+The web app has its own engine configuration rather than importing root `database.py`. When no URL is supplied, it defaults to a local database named `conference`; explicitly setting the URL avoids connecting to a different database accidentally.
+
+Users, papers, reviews, and sessions have CRUD workflows. User forms manage author/reviewer profiles; paper workflows manage authorship, keywords, and versions. Conferences, tracks, pools, hosts, and labels are supporting selection/read-only data. The schedule page queries the database view.
+
+The hosted application uses Render and persistent PostgreSQL on Neon, as described in `web/README.md` and `render.yaml`. Its database can be separate from the local demonstration database. Changes are shared only when both clients target the same database; there is no automatic local/hosted synchronization. Keep hosting available during grading. Put the actual application/video URLs in `links.txt`; those URLs are not supplied in the repository at the time of this documentation update.
+
+### Web demonstration checks with the final seed
+
+1. Create, read, edit, and delete temporary users, papers, reviews, and sessions. Include role profiles, paper authorship/keywords, and an additional paper version. Refresh the lists to confirm persistence.
+2. Try to create a review of paper 9 by reviewer 5 (Arman): he authored that paper, so the operation must be rejected with no review saved.
+3. Try to assign submitted paper 6 to session 1: the operation must be rejected because the paper is not accepted.
+4. Try to assign accepted paper 1 to session 3: the operation must be rejected because the track and session belong to different conferences.
+5. Show the schedule page and confirm paper 3 is absent while it has no session. Keep the original seed or restore it before returning to Part 2 demonstrations.
+
+These IDs refer to root `seed.sql`, not the separate sample used by default in `web/init_db.py`.
+
+## Relational schema: keys and references
+
+Names below match `schema.sql`. Composite keys are shown in parentheses. Nonoptional attributes are `NOT NULL`; optional attributes are `author.orcid`, `paper.session_id`, `paper_version.change_note`, and `review.confidential_comments`.
+
+| Relation | Primary key | Foreign keys and notable uniqueness |
+| --- | --- | --- |
+| `app_user` | `user_id` | Unique `email`. |
+| `author` | `author_id` | Also references `app_user.user_id`. |
+| `author_research_area` | `(author_id, area_label)` | `author_id` -> `author.author_id`. |
+| `reviewer` | `reviewer_id` | Also references `app_user.user_id`. |
+| `reviewer_expertise` | `(reviewer_id, area_label)` | `reviewer_id` -> `reviewer.reviewer_id`. |
+| `conference` | `conference_id` | Unique `acronym`. |
+| `conference_host` | `(conference_id, host_name)` | `conference_id` -> `conference.conference_id`. |
+| `conference_reviewer` | `(conference_id, reviewer_id)` | References `conference` and `reviewer`. |
+| `track` | `track_id` | References `conference`; coordinator -> `reviewer`; `(conference_id, coordinator_id)` -> `conference_reviewer`; unique `(conference_id, name)`. |
+| `conference_session` | `session_id` | References `conference`; chair -> `reviewer`; `(conference_id, chair_id)` -> `conference_reviewer`. |
+| `paper` | `paper_id` | `track_id` -> `track.track_id`; nullable `session_id` -> `conference_session.session_id`. |
+| `paper_keyword` | `(paper_id, keyword)` | References `paper`. |
+| `paper_author` | `(paper_id, author_id)` | References `paper` and `author`; unique `(paper_id, author_position)`; partial unique index permits at most one corresponding author per paper. |
+| `paper_version` | `(paper_id, version_no)` | References `paper`. |
+| `review` | `review_id` | References `paper` and `reviewer`; unique `(paper_id, reviewer_id)`. |
+
+Surrogate IDs use PostgreSQL `SERIAL`. Author/reviewer IDs reuse their user's ID; a user can have both roles. Research/expertise labels, keywords, and host names are stored in separate relations rather than comma-separated fields.
+
+### Required database constraints and application checks
+
+- Primary/foreign keys, required fields, unique user emails, unique author positions, and one review per reviewer/paper are enforced in PostgreSQL.
+- CHECK constraints enforce the five statuses (`submitted`, `under review`, `accepted`, `rejected`, `withdrawn`), integer scores 1-5, `accept`/`reject` recommendations, positive positions/version numbers, nonnegative experience, conference end >= start, and session end > start. Email has a basic `@` check; optional ORCID has a format check.
+- A paper has at most one session through its single nullable `session_id`. A CHECK also requires a scheduled paper to be accepted.
+- Self-reviews are rejected on review inserts/changes and paper-author changes: application checks plus `review_no_self_review` and `author_not_reviewer` triggers.
+- Session assignments require an accepted paper and matching track/session conferences. Application checks and `paper_session_valid` enforce paper status/track/session changes. `session_conference_change` and `track_conference_change` protect later conference reassignment.
+- Related web changes run in one transaction. Validation and database failures are reported to the user; partial writes are rolled back.
+
+### Optional business-rule enforcement
+
+| Rule | Enforcement |
+| --- | --- |
+| Every user has at least one author/reviewer role | Web user workflow; seed satisfies it. Direct SQL does not enforce minimum role membership. |
+| Every paper has authors and exactly one corresponding author | Web paper workflow; seed satisfies it. Database enforces at most one corresponding author, not a minimum. |
+| Every paper has at least one version | Web creation inserts version 1; deletion of its last version is rejected. Direct SQL does not enforce minimum version count. |
+| Track coordinator and session chair belong to the conference reviewer pool | Composite database foreign keys; the web session workflow also checks the chair. |
+| Required nonempty child relations such as hosts and area/expertise labels | Supplied in seed where applicable; their minimum cardinalities are not generally enforced automatically. |
+| Additional temporal or review-assignment policies | No general enforcement of deadline chronology, session date within conference dates, or reviewer's pool membership when saving a review. These are not among Assignment 3's two required application checks; compare any additional Assignment 1 rules with the team's chosen conceptual design. |
