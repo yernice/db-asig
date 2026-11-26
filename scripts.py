@@ -1,18 +1,14 @@
-"""Part 2: one numbered function and CLI command per assignment task."""
-
 import argparse
 from pathlib import Path
-
 from sqlalchemy import MetaData, Table, func, inspect, select, text
 from sqlalchemy.exc import SQLAlchemyError
-
+from database import engine
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 SEED_PATH = SCHEMA_PATH.with_name("seed.sql")
 
 
 def show_query(connection, task, sql, parameters):
-    """Print a numbered query, its bound inputs, and its result rows."""
     statement = text(sql.strip())
     print(f"\nTask {task}")
     print(f"SQL:\n{statement}")
@@ -27,9 +23,6 @@ def show_query(connection, task, sql, parameters):
 
 
 def task_1():
-    """Create the tables and constraints from schema.sql (destructive reset)."""
-    from database import engine
-
     schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
     print("Task 1 - Create tables and constraints")
     print(f"SQL from {SCHEMA_PATH.name}:\n{schema_sql}")
@@ -44,9 +37,6 @@ def task_1():
 
 
 def task_2():
-    """Run task 2, loading the shared seed and reporting every table's count."""
-    from database import engine
-
     seed_lines = SEED_PATH.read_text(encoding="utf-8").strip().splitlines()
     if (
         not seed_lines
@@ -74,10 +64,7 @@ def task_2():
 
 
 def task_3():
-    """Demonstrate updates 3.1 and 3.2, rolling each one back."""
-    from database import engine
-
-    # Task 3.1: use a separate transaction and always undo it.
+    # 3.1.
     with engine.connect() as connection:
         transaction = connection.begin()
         try:
@@ -96,7 +83,7 @@ def task_3():
             transaction.rollback()
             print("Task 3.1: ROLLBACK complete; demonstration changes were not saved.")
 
-    # Task 3.2: use a separate transaction and always undo it.
+    # 3.2
     with engine.connect() as connection:
         transaction = connection.begin()
         try:
@@ -118,10 +105,7 @@ def task_3():
 
 
 def task_4():
-    """Demonstrate deletions 4.1 and 4.2, rolling each one back."""
-    from database import engine
-
-    # Task 4.1: use a separate transaction and always undo it.
+    # 4.1
     with engine.connect() as connection:
         transaction = connection.begin()
         try:
@@ -158,7 +142,7 @@ def task_4():
             show_query(connection, "4.1 - Before: targeted rows and dependents", counts_sql, {"paper_ids": paper_ids})
             show_query(connection, "4.1 - Before: papers", papers_sql, {})
             show_query(connection, "4.1 - Before: protected records", protected_sql, {})
-            # Foreign keys cascade the paper deletion to its four dependent tables.
+            
             show_query(connection, "4.1 - Delete withdrawn papers",
                        f"DELETE FROM paper AS p WHERE {target_condition} RETURNING p.paper_id, p.title",
                        parameters)
@@ -169,7 +153,7 @@ def task_4():
             transaction.rollback()
             print("Task 4.1: ROLLBACK complete; demonstration changes were not saved.")
 
-    # Task 4.2: use a separate transaction and always undo it.
+    # 4.2
     with engine.connect() as connection:
         transaction = connection.begin()
         try:
@@ -200,11 +184,8 @@ def task_4():
 
 
 def task_5(paper_id=1, conference_id=1):
-    """Run the four simple retrieval queries using bound input values."""
-    from database import engine
-
     with engine.connect() as connection:
-        # Task 5.1
+        # 5.1
         show_query(connection, "5.1 - Accepted papers", """
             SELECT p.paper_id, p.title,
                    u.given_name || ' ' || u.surname AS corresponding_author_name,
@@ -219,7 +200,7 @@ def task_5(paper_id=1, conference_id=1):
             ORDER BY p.paper_id
         """, {"status": "accepted"})
 
-        # Task 5.2
+        # 5.2
         show_query(connection, "5.2 - Abstract search", """
             SELECT paper_id, title
             FROM paper
@@ -227,7 +208,7 @@ def task_5(paper_id=1, conference_id=1):
             ORDER BY paper_id
         """, {"pattern": "%machine learning%"})
 
-        # Task 5.3
+        # 5.3
         show_query(connection, "5.3 - Paper versions", """
             SELECT version_no, file_location, uploaded_at
             FROM paper_version
@@ -235,7 +216,7 @@ def task_5(paper_id=1, conference_id=1):
             ORDER BY version_no DESC
         """, {"paper_id": paper_id})
 
-        # Task 5.4
+        # 5.4
         show_query(connection, "5.4 - Conference reviewers", """
             SELECT r.reviewer_id, u.given_name || ' ' || u.surname AS full_name, u.email
             FROM reviewer AS r
@@ -254,11 +235,8 @@ def task_5(paper_id=1, conference_id=1):
 
 
 def task_6():
-    """Run the four aggregate queries, including empty populations."""
-    from database import engine
-
     with engine.connect() as connection:
-        # Task 6.1
+        # 6.1
         show_query(connection, "6.1 - Track statistics", """
             SELECT t.track_id, t.name AS track_name, t.conference_id,
                    COUNT(DISTINCT p.paper_id) AS paper_count,
@@ -270,7 +248,7 @@ def task_6():
             ORDER BY t.track_id
         """, {})
 
-        # Task 6.2
+        # 6.2
         show_query(connection, "6.2 - Reviewer statistics", """
             SELECT r.reviewer_id, u.given_name || ' ' || u.surname AS full_name,
                    COUNT(rv.review_id) AS review_count,
@@ -282,7 +260,7 @@ def task_6():
             ORDER BY r.reviewer_id
         """, {})
 
-        # Task 6.3
+        # 6.3
         show_query(connection, "6.3 - Conference statistics", """
             SELECT c.conference_id, c.acronym,
                    COUNT(DISTINCT p.paper_id) AS paper_count,
@@ -297,7 +275,7 @@ def task_6():
             ORDER BY c.conference_id
         """, {"accepted": "accepted"})
 
-        # Task 6.4
+        # 6.4
         show_query(connection, "6.4 - Above-average reviewers", """
             WITH review_counts AS (
                 SELECT r.reviewer_id, COUNT(rv.review_id) AS review_count
@@ -318,9 +296,6 @@ def task_6():
 
 
 def task_7():
-    """Calculate conference acceptance rates without changing data."""
-    from database import engine
-
     with engine.connect() as connection:
         show_query(connection, "7 - Conference acceptance rates", """
             WITH decisions AS (
@@ -341,8 +316,6 @@ def task_7():
 
 
 def task_8():
-    """Create or replace the schedule view and display its rows."""
-    from database import engine
     schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
     start = schema_sql.index("CREATE VIEW accepted_paper_schedule AS")
     end = schema_sql.index(";", start) + 1
