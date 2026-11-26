@@ -10,21 +10,6 @@ Research Conference and Paper Review Management System, Fall 2026.
 | Yernar | Duzelbay | 202217878 | Part 2 |
 | Nurislam | Zhanibek | 202361729 | Part 3 |
 
-## Project contents
-
-| File or directory | Purpose |
-| --- | --- |
-| `schema.sql` | PostgreSQL tables, constraints, indexes, schedule view, and five validation triggers. |
-| `seed.sql` | Final assignment dataset, including sequence resets after explicit-ID inserts. |
-| `database.py` | Part 2 SQLAlchemy engine and session factory; reads `DATABASE_URL`. |
-| `scripts.py` | Numbered CLI commands `task-1` through `task-8`. |
-| `requirements.txt` | Dependencies for Part 2. |
-| `web/app.py`, `web/templates/`, `web/static/` | Flask application and interface. |
-| `web/requirements.txt` | Separate dependencies for the web application. |
-| `web/init_db.py` | Alternative database loader using psycopg2 directly. It is not the Part 2 SQLAlchemy demonstration. |
-| `web/db/` | A schema copy and a separate development sample seed. Use root `seed.sql` for the final assignment dataset. |
-| `render.yaml` | Render deployment configuration, with persistent PostgreSQL supplied separately. |
-
 ## Software and versions
 
 Use PostgreSQL, not SQLite or MySQL, because the supplied SQL uses PostgreSQL-specific features.
@@ -51,10 +36,6 @@ python -m venv .venv
 
 Create an empty database named `db-assignment` in pgAdmin/DBeaver, or use PostgreSQL command-line tools:
 
-```bash
-createdb -h localhost -p 5432 -U postgres db-assignment
-```
-
 Set connection details in the current terminal; substitute your own password and database name:
 
 ```bash
@@ -68,41 +49,25 @@ export DATABASE_URL='postgresql+psycopg://postgres:YOUR_PASSWORD@localhost:5432/
 ./.venv/Scripts/python.exe scripts.py task-2
 ```
 
-Task 1 runs `schema.sql` and task 2 runs `seed.sql`. Each uses a transaction that commits on success. The seed loader omits the file's outer `BEGIN`/`COMMIT` so SQLAlchemy controls its transaction. PostgreSQL sequence counters can advance even if a transaction fails.
-
-Task 1 drops existing assignment tables and their data. Use a dedicated demonstration database. Task 2 expects empty tables; repeating it on populated tables fails on duplicate keys. Running the two commands above restores the original seed after web edits or other persistent changes.
-
-The seed has 15 tables, 10 users, 10 papers, 11 versions, 10 completed reviews, and 3 conferences. It includes all five statuses, author-only/reviewer-only/dual-role users, multiple authors and versions, empty tracks and sessions, a conference without papers, a reviewer without reviews, and accepted papers with and without sessions.
+Task 1 runs `schema.sql` and task 2 runs `seed.sql`. 
 
 ## Run Part 2
 
-Each command calls the same-numbered function in `scripts.py`. Most statements are executed by `show_query()`, which prints task labels, SQL, bound inputs, column names, rows, and result counts. Query logic runs in PostgreSQL.
-
-| Command after `python scripts.py` | Operation |
-| --- | --- |
-| `task-1` | Create schema and constraints; destructive reset. |
-| `task-2` | Load seed and show all table counts. |
-| `task-3` | Updates 3.1 and 3.2, with before/after results and independent rollbacks. |
-| `task-4` | Deletions 4.1 and 4.2, dependent/protected-record checks, and independent rollbacks. |
-| `task-5 --paper-id 1 --conference-id 1` | Simple queries 5.1-5.4. Both IDs default to 1. |
-| `task-6` | Aggregate queries 6.1-6.4. |
-| `task-7` | Acceptance rates using accepted and rejected papers only. |
-| `task-8` | Create/replace and query `accepted_paper_schedule`. |
-
-For example:
+Commands for other tasks are ran in the same manner: 
 
 ```bash
-./.venv/Scripts/python.exe scripts.py task-3
-./.venv/Scripts/python.exe scripts.py task-4
-./.venv/Scripts/python.exe scripts.py task-5 --paper-id 1 --conference-id 1
-./.venv/Scripts/python.exe scripts.py task-6
-./.venv/Scripts/python.exe scripts.py task-7
-./.venv/Scripts/python.exe scripts.py task-8
+./.venv/Scripts/python.exe scripts.py task-i
 ```
 
-Run independent demonstrations against the original seed. Tasks 3 and 4 make real changes inside separate transactions, print the temporary after-state, and always roll back, including on failure. There is no commit option. Tasks 5-7 read data; task 8 commits only the view definition. A separate DBeaver connection normally cannot see these uncommitted mutations.
+`i` - number of the task (3 to 8).
 
-Alternative: `task-5 --paper-id 2 --conference-id 2` returns paper 2's version 1 and reviewer 4 in sections 5.3/5.4. Other filters are unchanged. Inputs with no matches print zero rows. Aggregate score averages are not rounded, except the acceptance percentage in task 7.
+Task 5 also have additional variables `--paper-id` and `--conference-id`. They are set to 1 by default. You can change them as following:
+
+```bash
+./.venv/Scripts/python.exe scripts.py task-5 --paper-id 3 --conference-id 5
+```
+
+Tasks 3 and 4 make real changes inside separate transactions, print the temporary after-state, and always roll back, including on failure.
 
 ## Run the web application locally
 
